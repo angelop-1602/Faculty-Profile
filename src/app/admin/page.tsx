@@ -231,7 +231,7 @@ export default function AdminPage() {
 
   const handleViewProfile = (email: string) => {
     const encodedEmail = encodeURIComponent(email)
-    router.push(`/faculty/view/${encodedEmail}`)
+    router.push(`/admin/faculty/${encodedEmail}`)
   }
 
   // Calculate statistics based on filtered profiles
