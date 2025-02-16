@@ -38,11 +38,11 @@ export function PersonalInfoSection({ profile }: PersonalInfoSectionProps) {
           </div>
           <div>
             <dt className="text-sm font-medium text-muted-foreground">Member Since</dt>
-            <dd className="text-lg">{profile.createdAt.toLocaleDateString()}</dd>
+            <dd className="text-lg">{profile.createdAt?.toLocaleDateString() || 'Not available'}</dd>
           </div>
           <div>
             <dt className="text-sm font-medium text-muted-foreground">Last Updated</dt>
-            <dd className="text-lg">{profile.updatedAt.toLocaleDateString()}</dd>
+            <dd className="text-lg">{profile.updatedAt?.toLocaleDateString() || 'Not available'}</dd>
           </div>
         </dl>
       </CardContent>

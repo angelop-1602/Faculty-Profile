@@ -19,6 +19,9 @@ import { signOutUser } from '@/lib/firebase/auth'
 import { Building2, GraduationCap, LogOut, Mail, UserRound } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 
+const DEFAULT_BANNER = '/images/hero-bg.png'
+const DEFAULT_PROFILE = '/images/SPUP-logo.png'
+
 export default function FacultyPage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<FacultyProfile | null>(null)
@@ -65,7 +68,7 @@ export default function FacultyPage() {
       }
     }
 
-      fetchProfile()
+    fetchProfile()
   }, [user])
 
   const handleEdit = () => {
@@ -148,9 +151,12 @@ export default function FacultyPage() {
           {/* Banner */}
           <div className="relative h-48">
             <img
-              src={profile.bannerURL || '/images/fur de lis.png'}
+              src={profile.bannerURL || DEFAULT_BANNER}
               alt="Profile banner"
               className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = DEFAULT_BANNER
+              }}
             />
           </div>
 
@@ -164,7 +170,10 @@ export default function FacultyPage() {
                   <img
                     src={profile.photoURL}
                     alt={profile.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover bg-spup-green"
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_PROFILE
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-spup-green to-spup-green-dark flex items-center justify-center">
@@ -272,10 +281,10 @@ export default function FacultyPage() {
                     </div>
                   </div>
                 )}
-                </div>
-                </div>
+              </div>
+            </div>
 
-                </div>
+          </div>
 
           {/* Edit Profile Button - Bottom Right */}
           <EditProfileButton
@@ -283,8 +292,11 @@ export default function FacultyPage() {
             onEdit={handleEdit}
             onSave={handleSave}
             onCancel={handleCancel}
+            // Only keep positioning or layout classes here
             className="absolute top-6 right-6"
           />
+
+
         </div>
 
         {/* Research Sections */}
@@ -293,8 +305,8 @@ export default function FacultyPage() {
           <ResearchEngagementsSection profile={profile} setProfile={setProfile} />
           <ResearchPublicationsSection profile={profile} setProfile={setProfile} />
           <ResearchTitlesSection profile={profile} setProfile={setProfile} />
-      </div>
-    </main>
+        </div>
+      </main>
     </div>
   )
 } 

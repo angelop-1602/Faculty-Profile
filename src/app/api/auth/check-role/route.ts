@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/firebase/config'
 import { doc, getDoc } from 'firebase/firestore'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const email = request.nextUrl.searchParams.get('email')

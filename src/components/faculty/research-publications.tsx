@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { FacultyProfile, ResearchPublication } from '@/types/faculty'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import { useToast } from '@/components/ui/use-toast'
-import { ExternalLink } from 'lucide-react'
+import { Edit2, Trash2, Plus, FileText, Calendar, Building2, ExternalLink } from 'lucide-react'
 
 interface ResearchPublicationsSectionProps {
   profile: FacultyProfile
@@ -30,12 +30,16 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
 
   const handleEdit = (index: number) => {
     setEditIndex(index)
-    setFormData(profile.researchPublications[index])
+    if (profile.researchPublications && profile.researchPublications[index]) {
+      setFormData(profile.researchPublications[index])
+    }
     setIsOpen(true)
   }
 
   const handleDelete = async (index: number) => {
     try {
+      if (!profile.researchPublications) return
+
       const updatedPublications = [...profile.researchPublications]
       updatedPublications.splice(index, 1)
 
@@ -52,7 +56,7 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
 
       toast({
         title: 'Research Publication Deleted',
-        description: 'Your research publication has been deleted successfully.',
+        description: 'Research publication has been deleted successfully.',
         className: 'bg-green-500 text-white'
       })
     } catch (error) {
@@ -67,7 +71,7 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
 
   const handleAddResearchPublication = async () => {
     try {
-      const updatedPublications = [...profile.researchPublications]
+      const updatedPublications = [...(profile.researchPublications || [])]
       if (editIndex !== null) {
         updatedPublications[editIndex] = formData
       } else {
@@ -88,8 +92,8 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
       toast({
         title: editIndex !== null ? 'Research Publication Updated' : 'Research Publication Added',
         description: editIndex !== null 
-          ? 'Your research publication has been updated successfully.'
-          : 'Your research publication has been added successfully.',
+          ? 'Research publication has been updated successfully.'
+          : 'Research publication has been added successfully.',
         className: 'bg-green-500 text-white'
       })
       setIsOpen(false)
@@ -111,70 +115,72 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
   }
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Research Publications</CardTitle>
-          <CardDescription>Your published research papers</CardDescription>
-        </div>
-        <Button onClick={() => {
-          setFormData({
-            title: '',
-            journal: '',
-            year: '',
-            link: '',
-          })
-          setEditIndex(null)
-          setIsOpen(true)
-        }}>Add</Button>
+        <CardTitle className="text-2xl font-bold">Research Publications</CardTitle>
+        <Button 
+          onClick={() => {
+            setFormData({
+              title: '',
+              journal: '',
+              year: '',
+              link: '',
+            })
+            setEditIndex(null)
+            setIsOpen(true)
+          }}
+          className="bg-spup-green hover:bg-spup-green-dark"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Publication
+        </Button>
       </CardHeader>
       <CardContent>
-        {profile.researchPublications.length === 0 ? (
+        {!profile.researchPublications || profile.researchPublications.length === 0 ? (
           <p className="text-muted-foreground">No research publications added yet.</p>
         ) : (
-          <div className="space-y-6">
+          <div className="grid gap-4">
             {profile.researchPublications.map((publication, index) => (
-              <div key={index} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">{publication.title}</h3>
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      <div className="flex justify-between">
-                        <span>Journal/Conference: {publication.journal}</span>
-                        <span>Year: {publication.year}</span>
-                      </div>
-                      {publication.link && (
-                        <div className="mt-2">
-                          <a
-                            href={publication.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline flex items-center gap-2"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            View Publication
-                          </a>
-                        </div>
-                      )}
-                    </div>
+              <div key={index} className="bg-white border rounded-lg p-4 relative group hover:shadow-md transition-shadow">
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(index)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit2 className="h-4 w-4 text-gray-500 hover:text-spup-green" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(index)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
+                  </Button>
+                </div>
+                <h3 className="font-semibold text-lg text-spup-green pr-20">{publication.title}</h3>
+                <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Building2 className="h-4 w-4 text-gray-400" />
+                    {publication.journal}
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(index)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500 hover:text-red-700"
-                      onClick={() => handleDelete(index)}
-                    >
-                      Delete
-                    </Button>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    {publication.year}
                   </div>
+                  {publication.link && (
+                    <a
+                      href={publication.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-spup-green hover:text-spup-green-dark"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View Publication
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
@@ -240,7 +246,7 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
             }}>
               Cancel
             </Button>
-            <Button onClick={handleAddResearchPublication}>
+            <Button onClick={handleAddResearchPublication} className="bg-spup-green hover:bg-spup-green-dark">
               {editIndex !== null ? 'Save Changes' : 'Add Publication'}
             </Button>
           </div>

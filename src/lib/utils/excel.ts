@@ -66,10 +66,25 @@ export const exportFacultyProfiles = async () => {
   try {
     // Fetch all faculty profiles
     const querySnapshot = await getDocs(collection(db, 'faculty_profiles'))
-    const profiles = querySnapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    })) as FacultyProfile[]
+    const profiles = querySnapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        ...data,
+        id: doc.id,
+        email: data.email || '',
+        name: data.name || '',
+        department: data.department || '',
+        specialization: data.specialization || '',
+        status: data.status || '',
+        education: data.education || [],
+        researchEngagements: data.researchEngagements || [],
+        researchPublications: data.researchPublications || [],
+        researchTitles: data.researchTitles || [],
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+        lastLogin: data.lastLogin?.toDate(),
+      } as FacultyProfile
+    })
 
     // Define headers with grouping
     const headers = [
