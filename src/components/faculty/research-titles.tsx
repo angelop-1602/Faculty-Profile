@@ -36,16 +36,21 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
 
   const handleEdit = (index: number) => {
     setEditIndex(index)
-    if (profile.researchTitles && profile.researchTitles[index]) {
-      setFormData(profile.researchTitles[index])
+    const titles = profile.researchTitles || []
+    const title = titles[index]
+    if (title) {
+      setFormData(title)
     }
     setIsOpen(true)
   }
 
   const handleDelete = async (index: number) => {
     try {
-      const title = profile.researchTitles[index]
-      const updatedTitles = [...(profile.researchTitles || [])]
+      const titles = profile.researchTitles || []
+      const title = titles[index]
+      if (!title) return
+
+      const updatedTitles = [...titles]
       updatedTitles.splice(index, 1)
 
       // Delete the file from storage if it exists
@@ -79,8 +84,8 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
     }
   }
 
-  const handleFileUpload = async (file: File) => {
-    if (!file) return null
+  const handleFileUpload = async (file: File): Promise<string | undefined> => {
+    if (!file) return undefined
 
     try {
       setIsUploading(true)
@@ -107,12 +112,15 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
         return
       }
 
-      let paperUrl = formData.paper
+      let paperUrl: string | undefined = formData.paper
       const fileInput = fileInputRef.current
 
-      if (fileInput?.files?.length && formData.status === 'completed') {
+      if (fileInput?.files?.length) {
         try {
-          paperUrl = await handleFileUpload(fileInput.files[0])
+          const uploadedUrl = await handleFileUpload(fileInput.files[0])
+          if (uploadedUrl) {
+            paperUrl = uploadedUrl
+          }
         } catch (error) {
           toast({
             title: 'Error',
@@ -123,16 +131,18 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
         }
       }
 
-      const newTitle = {
+      const newTitle: ResearchTitle = {
         ...formData,
         paper: paperUrl
       }
 
-      const updatedTitles = [...(profile.researchTitles || [])]
+      const currentTitles = profile.researchTitles || []
+      const updatedTitles = [...currentTitles]
+      
       if (editIndex !== null) {
         // If editing and there's an existing paper URL that's different, delete the old file
-        const oldTitle = profile.researchTitles[editIndex]
-        if (oldTitle.paper && oldTitle.paper !== paperUrl) {
+        const oldTitle = currentTitles[editIndex]
+        if (oldTitle?.paper && oldTitle.paper !== paperUrl) {
           const oldFileRef = ref(storage, oldTitle.paper)
           await deleteObject(oldFileRef)
         }

@@ -18,58 +18,61 @@ import { EditProfileButton } from '@/components/faculty/edit-profile-button'
 import { signOutUser } from '@/lib/firebase/auth'
 import { Building2, GraduationCap, LogOut, Mail, UserRound } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { useFetchWithRetry } from '@/lib/hooks/use-fetch-with-retry'
 
 const DEFAULT_BANNER = '/images/hero-bg.png'
-const DEFAULT_PROFILE = '/images/SPUP-logo.png'
+const DEFAULT_PROFILE = '/images/spup-logo.png'
 
 export default function FacultyPage() {
   const { user } = useAuth()
-  const [profile, setProfile] = useState<FacultyProfile | null>(null)
-  const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [editedProfile, setEditedProfile] = useState<FacultyProfile | null>(null)
   const { toast } = useToast()
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user?.email) return
+  const fetchProfile = async () => {
+    if (!user?.email) throw new Error('No user email')
+    
+    const docRef = doc(db, 'faculty_profiles', user.email)
+    const docSnap = await getDoc(docRef)
 
-      try {
-        const docRef = doc(db, 'faculty_profiles', user.email)
-        const docSnap = await getDoc(docRef)
-
-        if (docSnap.exists()) {
-          const data = docSnap.data()
-          // Store the Microsoft photo URL in the database if it's available and different
-          if (user.photoURL && user.photoURL !== data.photoURL) {
-            await updateDoc(docRef, {
-              photoURL: user.photoURL
-            })
-          }
-
-          const profileData = {
-            ...data,
-            photoURL: user.photoURL || data.photoURL,
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate(),
-            lastLogin: data.lastLogin?.toDate(),
-            researchEngagements: data.researchEngagements || [],
-            researchPublications: data.researchPublications || [],
-            researchTitles: data.researchTitles || [],
-          } as FacultyProfile
-
-          setProfile(profileData)
-          setEditedProfile(profileData)
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error)
-      } finally {
-        setLoading(false)
-      }
+    if (!docSnap.exists()) {
+      throw new Error('Profile not found')
     }
 
-    fetchProfile()
-  }, [user])
+    const data = docSnap.data()
+    // Store the Microsoft photo URL in the database if it's available and different
+    if (user.photoURL && user.photoURL !== data.photoURL) {
+      await updateDoc(docRef, {
+        photoURL: user.photoURL
+      })
+    }
+
+    return {
+      ...data,
+      photoURL: user.photoURL || data.photoURL,
+      createdAt: data.createdAt?.toDate(),
+      updatedAt: data.updatedAt?.toDate(),
+      lastLogin: data.lastLogin?.toDate(),
+      researchEngagements: data.researchEngagements || [],
+      researchPublications: data.researchPublications || [],
+      researchTitles: data.researchTitles || [],
+    } as FacultyProfile
+  }
+
+  const { data: profile, loading, error } = useFetchWithRetry<FacultyProfile>(
+    fetchProfile,
+    {
+      maxRetries: 3,
+      retryDelay: 1000,
+      requiresAuth: true
+    }
+  )
+
+  useEffect(() => {
+    if (profile) {
+      setEditedProfile(profile)
+    }
+  }, [profile])
 
   const handleEdit = () => {
     setIsEditing(true)
@@ -89,7 +92,7 @@ export default function FacultyPage() {
         updatedAt: new Date()
       })
 
-      setProfile(editedProfile)
+      setEditedProfile(editedProfile)
       setIsEditing(false)
       toast({
         title: 'Profile Updated',
@@ -115,13 +118,13 @@ export default function FacultyPage() {
     )
   }
 
-  if (!profile || !editedProfile) {
+  if (error || !profile || !editedProfile) {
     return (
       <div className="container mx-auto py-8">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold">Profile Not Found</h2>
+          <h2 className="text-xl font-semibold">Error Loading Profile</h2>
           <p className="mt-2 text-muted-foreground">
-            Could not find your faculty profile. Please contact the administrator.
+            {error?.message || 'Could not find your faculty profile. Please contact the administrator.'}
           </p>
         </div>
       </div>
@@ -301,10 +304,10 @@ export default function FacultyPage() {
 
         {/* Research Sections */}
         <div className="space-y-8">
-          <EducationSection profile={profile} setProfile={setProfile} />
-          <ResearchEngagementsSection profile={profile} setProfile={setProfile} />
-          <ResearchPublicationsSection profile={profile} setProfile={setProfile} />
-          <ResearchTitlesSection profile={profile} setProfile={setProfile} />
+          <EducationSection profile={profile} setProfile={setEditedProfile} />
+          <ResearchEngagementsSection profile={profile} setProfile={setEditedProfile} />
+          <ResearchPublicationsSection profile={profile} setProfile={setEditedProfile} />
+          <ResearchTitlesSection profile={profile} setProfile={setEditedProfile} />
         </div>
       </main>
     </div>

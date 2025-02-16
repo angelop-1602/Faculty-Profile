@@ -30,17 +30,21 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
 
   const handleEdit = (index: number) => {
     setEditIndex(index)
-    if (profile.researchPublications && profile.researchPublications[index]) {
-      setFormData(profile.researchPublications[index])
+    const publications = profile.researchPublications || []
+    const publication = publications[index]
+    if (publication) {
+      setFormData(publication)
     }
     setIsOpen(true)
   }
 
   const handleDelete = async (index: number) => {
     try {
-      if (!profile.researchPublications) return
+      const publications = profile.researchPublications || []
+      const publication = publications[index]
+      if (!publication) return
 
-      const updatedPublications = [...profile.researchPublications]
+      const updatedPublications = [...publications]
       updatedPublications.splice(index, 1)
 
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {
@@ -56,14 +60,13 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
 
       toast({
         title: 'Research Publication Deleted',
-        description: 'Research publication has been deleted successfully.',
+        description: 'The research publication has been deleted successfully.',
         className: 'bg-green-500 text-white'
       })
-    } catch (error) {
-      console.error('Error deleting research publication:', error)
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to delete research publication. Please try again.',
+        description: error.message || 'Failed to delete research publication.',
         className: 'bg-red-500 text-white'
       })
     }
@@ -71,11 +74,26 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
 
   const handleAddResearchPublication = async () => {
     try {
-      const updatedPublications = [...(profile.researchPublications || [])]
+      if (!formData.title || !formData.journal || !formData.year || !formData.link) {
+        toast({
+          title: 'Missing Fields',
+          description: 'Please fill in all required fields.',
+          className: 'bg-red-500 text-white'
+        })
+        return
+      }
+
+      const newPublication: ResearchPublication = {
+        ...formData
+      }
+
+      const currentPublications = profile.researchPublications || []
+      const updatedPublications = [...currentPublications]
+      
       if (editIndex !== null) {
-        updatedPublications[editIndex] = formData
+        updatedPublications[editIndex] = newPublication
       } else {
-        updatedPublications.push(formData)
+        updatedPublications.push(newPublication)
       }
 
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {

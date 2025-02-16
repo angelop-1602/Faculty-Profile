@@ -33,16 +33,21 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
 
   const handleEdit = (index: number) => {
     setEditIndex(index)
-    if (profile.researchEngagements && profile.researchEngagements[index]) {
-      setFormData(profile.researchEngagements[index])
+    const engagements = profile.researchEngagements || []
+    const engagement = engagements[index]
+    if (engagement) {
+      setFormData(engagement)
     }
     setIsOpen(true)
   }
 
   const handleDelete = async (index: number) => {
     try {
-      const engagement = profile.researchEngagements[index]
-      const updatedEngagements = [...(profile.researchEngagements || [])]
+      const engagements = profile.researchEngagements || []
+      const engagement = engagements[index]
+      if (!engagement) return
+
+      const updatedEngagements = [...engagements]
       updatedEngagements.splice(index, 1)
 
       // Delete the file from storage if it exists
@@ -76,8 +81,8 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
     }
   }
 
-  const handleFileUpload = async (file: File) => {
-    if (!file) return null
+  const handleFileUpload = async (file: File): Promise<string | undefined> => {
+    if (!file) return undefined
 
     try {
       setIsUploading(true)
@@ -104,12 +109,15 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
         return
       }
 
-      let certificateUrl = formData.certificate
+      let certificateUrl: string | undefined = formData.certificate
       const fileInput = fileInputRef.current
 
       if (fileInput?.files?.length) {
         try {
-          certificateUrl = await handleFileUpload(fileInput.files[0])
+          const uploadedUrl = await handleFileUpload(fileInput.files[0])
+          if (uploadedUrl) {
+            certificateUrl = uploadedUrl
+          }
         } catch (error) {
           toast({
             title: 'Error',
@@ -120,16 +128,18 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
         }
       }
 
-      const newEngagement = {
+      const newEngagement: ResearchEngagement = {
         ...formData,
         certificate: certificateUrl
       }
 
-      const updatedEngagements = [...(profile.researchEngagements || [])]
+      const currentEngagements = profile.researchEngagements || []
+      const updatedEngagements = [...currentEngagements]
+      
       if (editIndex !== null) {
         // If editing and there's an existing certificate URL that's different, delete the old file
-        const oldEngagement = profile.researchEngagements[editIndex]
-        if (oldEngagement.certificate && oldEngagement.certificate !== certificateUrl) {
+        const oldEngagement = currentEngagements[editIndex]
+        if (oldEngagement?.certificate && oldEngagement.certificate !== certificateUrl) {
           const oldFileRef = ref(storage, oldEngagement.certificate)
           await deleteObject(oldFileRef)
         }

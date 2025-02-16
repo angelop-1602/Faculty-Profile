@@ -30,19 +30,23 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
 
   const handleEdit = (index: number) => {
     setEditIndex(index)
-    if (profile.education && profile.education[index]) {
-      setFormData(profile.education[index])
+    const educationList = profile.education || []
+    const education = educationList[index]
+    if (education) {
+      setFormData(education)
     }
     setIsOpen(true)
   }
 
   const handleDelete = async (index: number) => {
     try {
-      if (!profile.education) return
+      const educationList = profile.education || []
+      const education = educationList[index]
+      if (!education) return
 
-      const updatedEducation = [...profile.education]
+      const updatedEducation = [...educationList]
       updatedEducation.splice(index, 1)
-      
+
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {
         education: updatedEducation,
         updatedAt: new Date()
@@ -55,15 +59,14 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
       })
 
       toast({
-        title: 'Education Deleted',
-        description: 'Education record has been deleted successfully.',
+        title: 'Education Entry Deleted',
+        description: 'The education entry has been deleted successfully.',
         className: 'bg-green-500 text-white'
       })
-    } catch (error) {
-      console.error('Error deleting education:', error)
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to delete education record. Please try again.',
+        description: error.message || 'Failed to delete education entry.',
         className: 'bg-red-500 text-white'
       })
     }
