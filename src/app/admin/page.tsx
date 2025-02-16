@@ -42,7 +42,7 @@ import {
   RadialLinearScale,
 } from 'chart.js'
 import { Line, Bar, Pie, Radar } from 'react-chartjs-2'
-import { exportToExcel } from '@/lib/utils/excel'
+import { exportFacultyProfiles } from '@/lib/utils/excel'
 
 // Register ChartJS components
 ChartJS.register(
@@ -212,8 +212,130 @@ export default function AdminPage() {
 
   const totalPages = Math.ceil(filteredProfiles.length / itemsPerPage)
 
+  const handleExport = async () => {
+    const result = await exportFacultyProfiles()
+    if (result.success) {
+      toast({
+        title: 'Success',
+        description: result.message,
+        className: 'bg-green-500 text-white'
+      })
+    } else {
+      toast({
+        title: 'Error',
+        description: result.message,
+        variant: 'destructive'
+      })
+    }
+  }
+
   const handleViewProfile = (email: string) => {
-    router.push(`/faculty/view/${encodeURIComponent(email)}`)
+    const encodedEmail = encodeURIComponent(email)
+    router.push(`/admin/faculty/${encodedEmail}`)
+  }
+
+  // Calculate statistics based on filtered profiles
+  const totalFaculty = filteredProfiles.length
+  const totalResearchOutput = filteredProfiles.reduce((acc, profile) => 
+    acc + (profile.researchPublications?.length || 0) +
+         (profile.researchEngagements?.length || 0) +
+         (profile.researchTitles?.length || 0)
+  , 0)
+  const activeResearchers = filteredProfiles.filter(p => 
+    (p.researchPublications?.length || 0) +
+    (p.researchTitles?.length || 0) > 0
+  ).length
+  const researchGrowth = Math.round(processedData?.predictions
+    .filter((p: any) => 
+      filteredProfiles.some(fp => fp.email === p.email) && 
+      p.predictedActivity.trend === 'Increasing'
+    ).length / totalFaculty * 100) || 0
+
+  // Update chart data based on filtered profiles
+  const departmentChartData = {
+    labels: Object.keys(processedData?.departmentSummary || {}),
+    datasets: [
+      {
+        label: 'Publications',
+        data: Object.values(processedData?.departmentSummary || {}).map((d: any) => 
+          selectedDepartment === 'all' || d.department === selectedDepartment ? d.publications : 0
+        ),
+        backgroundColor: 'rgba(3, 102, 53, 0.5)',
+        borderColor: 'rgb(3, 102, 53)',
+      },
+      {
+        label: 'Engagements',
+        data: Object.values(processedData?.departmentSummary || {}).map((d: any) => 
+          selectedDepartment === 'all' || d.department === selectedDepartment ? d.engagements : 0
+        ),
+        backgroundColor: 'rgba(254, 204, 7, 0.5)',
+        borderColor: 'rgb(254, 204, 7)',
+      },
+      {
+        label: 'Research Titles',
+        data: Object.values(processedData?.departmentSummary || {}).map((d: any) => 
+          selectedDepartment === 'all' || d.department === selectedDepartment ? d.titles : 0
+        ),
+        backgroundColor: 'rgba(3, 102, 53, 0.8)',
+        borderColor: 'rgb(3, 102, 53)',
+      }
+    ]
+  }
+
+  const trendsChartData = {
+    labels: Object.keys(processedData?.trends?.publications || {}).sort(),
+    datasets: [
+      {
+        label: 'Publications',
+        data: Object.keys(processedData?.trends?.publications || {}).sort()
+          .map(year => processedData?.trends?.publications[year] || 0),
+        borderColor: 'rgb(3, 102, 53)',
+        tension: 0.1
+      },
+      {
+        label: 'Engagements',
+        data: Object.keys(processedData?.trends?.engagements || {}).sort()
+          .map(year => processedData?.trends?.engagements[year] || 0),
+        borderColor: 'rgb(254, 204, 7)',
+        tension: 0.1
+      },
+      {
+        label: 'Research Titles',
+        data: Object.keys(processedData?.trends?.titles || {}).sort()
+          .map(year => processedData?.trends?.titles[year] || 0),
+        borderColor: 'rgb(3, 102, 53)',
+        tension: 0.1
+      }
+    ]
+  }
+
+  const facultyByDepartmentData = {
+    labels: Object.keys(processedData?.departmentSummary || {}),
+    datasets: [{
+      label: 'Total Faculty',
+      data: Object.values(processedData?.departmentSummary || {}).map((d: any) => d?.totalFaculty || 0),
+      backgroundColor: [
+        'rgba(3, 102, 53, 0.8)',
+        'rgba(254, 204, 7, 0.8)',
+        'rgba(3, 102, 53, 0.6)',
+        'rgba(254, 204, 7, 0.6)',
+        'rgba(3, 102, 53, 0.4)',
+        'rgba(254, 204, 7, 0.4)',
+      ],
+    }]
+  }
+
+  const researchActivityRadarData = {
+    labels: Object.keys(processedData?.departmentSummary || {}),
+    datasets: [{
+      label: 'Research Activity Score',
+      data: Object.values(processedData?.departmentSummary || {}).map((d: any) => 
+        d ? ((d.publications || 0) * 3 + (d.engagements || 0) * 2 + (d.titles || 0) * 1) / (d.totalFaculty || 1) : 0
+      ),
+      backgroundColor: 'rgba(3, 102, 53, 0.2)',
+      borderColor: 'rgb(3, 102, 53)',
+      pointBackgroundColor: 'rgb(3, 102, 53)',
+    }]
   }
 
   if (loading) {
@@ -227,87 +349,6 @@ export default function AdminPage() {
         </div>
       </div>
     )
-  }
-
-  // Prepare chart data
-  const departmentChartData = {
-    labels: Object.keys(processedData.departmentSummary),
-    datasets: [
-      {
-        label: 'Publications',
-        data: Object.values(processedData.departmentSummary).map((d: any) => d.publications),
-        backgroundColor: 'rgba(3, 102, 53, 0.5)',
-        borderColor: 'rgb(3, 102, 53)',
-      },
-      {
-        label: 'Engagements',
-        data: Object.values(processedData.departmentSummary).map((d: any) => d.engagements),
-        backgroundColor: 'rgba(254, 204, 7, 0.5)',
-        borderColor: 'rgb(254, 204, 7)',
-      },
-      {
-        label: 'Research Titles',
-        data: Object.values(processedData.departmentSummary).map((d: any) => d.titles),
-        backgroundColor: 'rgba(3, 102, 53, 0.8)',
-        borderColor: 'rgb(3, 102, 53)',
-      }
-    ]
-  }
-
-  const trendsChartData = {
-    labels: Object.keys(processedData.trends.publications).sort(),
-    datasets: [
-      {
-        label: 'Publications',
-        data: Object.keys(processedData.trends.publications).sort()
-          .map(year => processedData.trends.publications[year]),
-        borderColor: 'rgb(3, 102, 53)',
-        tension: 0.1
-      },
-      {
-        label: 'Engagements',
-        data: Object.keys(processedData.trends.engagements).sort()
-          .map(year => processedData.trends.engagements[year]),
-        borderColor: 'rgb(254, 204, 7)',
-        tension: 0.1
-      },
-      {
-        label: 'Research Titles',
-        data: Object.keys(processedData.trends.titles).sort()
-          .map(year => processedData.trends.titles[year]),
-        borderColor: 'rgb(3, 102, 53)',
-        tension: 0.1
-      }
-    ]
-  }
-
-  const facultyByDepartmentData = {
-    labels: Object.keys(processedData.departmentSummary),
-    datasets: [{
-      label: 'Total Faculty',
-      data: Object.values(processedData.departmentSummary).map((d: any) => d.totalFaculty),
-      backgroundColor: [
-        'rgba(3, 102, 53, 0.8)',
-        'rgba(254, 204, 7, 0.8)',
-        'rgba(3, 102, 53, 0.6)',
-        'rgba(254, 204, 7, 0.6)',
-        'rgba(3, 102, 53, 0.4)',
-        'rgba(254, 204, 7, 0.4)',
-      ],
-    }]
-  }
-
-  const researchActivityRadarData = {
-    labels: Object.keys(processedData.departmentSummary),
-    datasets: [{
-      label: 'Research Activity Score',
-      data: Object.values(processedData.departmentSummary).map((d: any) => 
-        (d.publications * 3 + d.engagements * 2 + d.titles * 1) / d.totalFaculty
-      ),
-      backgroundColor: 'rgba(3, 102, 53, 0.2)',
-      borderColor: 'rgb(3, 102, 53)',
-      pointBackgroundColor: 'rgb(3, 102, 53)',
-    }]
   }
 
   return (
@@ -333,7 +374,7 @@ export default function AdminPage() {
           <CardHeader>
             <CardTitle>Faculty Research Profiles</CardTitle>
             <CardDescription>Detailed view of research activities</CardDescription>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -343,87 +384,90 @@ export default function AdminPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Select value={selectedDepartment} onValueChange={(value: string) => setSelectedDepartment(value)}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="All Departments" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  <SelectItem value="SASTE">SASTE</SelectItem>
-                  <SelectItem value="SITE">SITE</SelectItem>
-                  <SelectItem value="SBHAM">SBHAM</SelectItem>
-                  <SelectItem value="SNAHS">SNAHS</SelectItem>
-                  <SelectItem value="SOM">SOM</SelectItem>
-                  <SelectItem value="BEU">BEU</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={selectedDepartment} onValueChange={(value: string) => setSelectedDepartment(value)}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    <SelectItem value="SASTE">SASTE</SelectItem>
+                    <SelectItem value="SITE">SITE</SelectItem>
+                    <SelectItem value="SBHAM">SBHAM</SelectItem>
+                    <SelectItem value="SNAHS">SNAHS</SelectItem>
+                    <SelectItem value="SOM">SOM</SelectItem>
+                    <SelectItem value="BEU">BEU</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleExport}
+                  className="flex items-center gap-2"
+                  variant="outline"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name / Department
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Publications
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Engagements
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Research Titles
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Activity Level
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedProfiles.map((profile) => {
-                    const prediction = processedData.predictions.find(
-                      (p: any) => p.email === profile.email
-                    )
-                    return (
-                      <tr key={profile.email}>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{profile.name}</div>
-                          <div className="text-sm text-gray-500">{profile.department || 'N/A'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {profile.researchPublications?.length || 0}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {profile.researchEngagements?.length || 0}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {profile.researchTitles?.length || 0}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                            ${prediction?.predictedActivity.level === 'High' 
-                              ? 'bg-green-100 text-green-800'
-                              : prediction?.predictedActivity.level === 'Medium'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            {prediction?.predictedActivity.level}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex space-x-2">
+            <div className="overflow-x-auto">
+              <div className="rounded-md border min-w-[800px]">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name / Department
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Publications
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Engagements
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Research Titles
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedProfiles.map((profile) => {
+                      const prediction = processedData?.predictions?.find(
+                        (p: any) => p.email === profile.email
+                      )
+                      return (
+                        <tr key={profile.email}>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900">{profile.name}</div>
+                            <div className="text-sm text-gray-500">{profile.department || 'N/A'}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {profile.researchPublications?.length || 0}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {profile.researchEngagements?.length || 0}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {profile.researchTitles?.length || 0}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {profile.status || 'Not set'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <Button
                               variant="outline"
                               size="sm"
@@ -432,13 +476,13 @@ export default function AdminPage() {
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Pagination */}
@@ -472,7 +516,7 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-spup-green">
-                {profiles.length}
+                {totalFaculty}
               </div>
               <p className="text-sm text-gray-600 mt-2">
                 Registered faculty members
@@ -486,11 +530,7 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-spup-green">
-                {profiles.reduce((acc, profile) => 
-                  acc + (profile.researchPublications?.length || 0) +
-                       (profile.researchEngagements?.length || 0) +
-                       (profile.researchTitles?.length || 0)
-                , 0)}
+                {totalResearchOutput}
               </div>
               <p className="text-sm text-gray-600 mt-2">
                 Combined research activities
@@ -504,10 +544,7 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-spup-green">
-                {profiles.filter(p => 
-                  (p.researchPublications?.length || 0) +
-                  (p.researchTitles?.length || 0) > 0
-                ).length}
+                {activeResearchers}
               </div>
               <p className="text-sm text-gray-600 mt-2">
                 Faculty with research activity
@@ -521,9 +558,7 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-spup-green">
-                {Math.round(processedData.predictions
-                  .filter((p: any) => p.predictedActivity.trend === 'Increasing').length /
-                  profiles.length * 100)}%
+                {researchGrowth}%
               </div>
               <p className="text-sm text-gray-600 mt-2">
                 Increasing research activity
@@ -580,54 +615,6 @@ export default function AdminPage() {
 
           {/* Research Gaps */}
           <ResearchGapsCard processedData={processedData} />
-        </div>
-
-        {/* Faculty Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Faculty Members</h2>
-              <Button
-                onClick={() => exportToExcel(profiles)}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export to Excel
-              </Button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="px-4 py-2 text-left">Name</th>
-                    <th className="px-4 py-2 text-left">Department</th>
-                    <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-left">Research Count</th>
-                    <th className="px-4 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {profiles.map((profile) => (
-                    <tr key={profile.email} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2">{profile.name}</td>
-                      <td className="px-4 py-2">{profile.department || 'Not set'}</td>
-                      <td className="px-4 py-2">{profile.status || 'Not set'}</td>
-                      <td className="px-4 py-2">{profile.researchCount?.total || 0}</td>
-                      <td className="px-4 py-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewProfile(profile.email)}
-                        >
-                          View Profile
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       </main>
     </div>

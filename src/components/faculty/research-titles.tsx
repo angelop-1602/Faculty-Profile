@@ -60,23 +60,42 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
 
   const handleEdit = (index: number) => {
     setEditIndex(index)
-    setFormData(profile.researchTitles[index])
+    setFormData(profile.researchTitles?.[index] || {
+      title: '',
+      year: '',
+      type: 'self-funded',
+      fundingAgency: '',
+      status: 'on-going',
+      paper: '',
+    })
     setIsOpen(true)
   }
 
   const handleDelete = async (index: number) => {
     try {
-      const updatedTitles = [...profile.researchTitles]
+      const updatedTitles = [...(profile.researchTitles || [])]
       updatedTitles.splice(index, 1)
+
+      // Update the research count
+      const updatedResearchCount = {
+        total: (profile.researchCount?.publications || 0) + 
+               (profile.researchCount?.engagements || 0) + 
+               updatedTitles.length,
+        publications: profile.researchCount?.publications || 0,
+        engagements: profile.researchCount?.engagements || 0,
+        titles: updatedTitles.length
+      }
 
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {
         researchTitles: updatedTitles,
+        researchCount: updatedResearchCount,
         updatedAt: new Date()
       })
 
       setProfile({
         ...profile,
         researchTitles: updatedTitles,
+        researchCount: updatedResearchCount,
         updatedAt: new Date()
       })
 
@@ -100,9 +119,25 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
       let paperUrl = formData.paper
       if (file && formData.status === 'completed') {
         try {
-          const storageRef = ref(storage, `papers/${profile.email}/${file.name}`)
+          // Create a unique filename to prevent overwriting
+          const timestamp = Date.now()
+          const uniqueFileName = `${timestamp}_${file.name}`
+          const storageRef = ref(storage, `faculty_profiles/${profile.email}/research_titles/${uniqueFileName}`)
+          
+          // Show upload progress
+          toast({
+            title: 'Uploading File',
+            description: 'Please wait while we upload your file...',
+          })
+          
           const snapshot = await uploadBytes(storageRef, file)
           paperUrl = await getDownloadURL(snapshot.ref)
+          
+          toast({
+            title: 'File Uploaded',
+            description: 'Your file has been uploaded successfully.',
+            className: 'bg-green-500 text-white'
+          })
         } catch (error) {
           const errorMessage = handleUploadError(error)
           toast({
@@ -119,21 +154,33 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
         paper: paperUrl
       }
 
-      const updatedTitles = [...profile.researchTitles]
+      const updatedTitles = [...(profile.researchTitles || [])]
       if (editIndex !== null) {
         updatedTitles[editIndex] = newTitle
       } else {
         updatedTitles.push(newTitle)
       }
 
+      // Update the research count
+      const updatedResearchCount = {
+        total: (profile.researchCount?.publications || 0) + 
+               (profile.researchCount?.engagements || 0) + 
+               updatedTitles.length,
+        publications: profile.researchCount?.publications || 0,
+        engagements: profile.researchCount?.engagements || 0,
+        titles: updatedTitles.length
+      }
+
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {
         researchTitles: updatedTitles,
+        researchCount: updatedResearchCount,
         updatedAt: new Date()
       })
 
       setProfile({
         ...profile,
         researchTitles: updatedTitles,
+        researchCount: updatedResearchCount,
         updatedAt: new Date()
       })
 
@@ -187,7 +234,7 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
         }}>Add</Button>
       </CardHeader>
       <CardContent>
-        {profile.researchTitles.length === 0 ? (
+        {(!profile.researchTitles || profile.researchTitles.length === 0) ? (
           <p className="text-muted-foreground">No research titles added yet.</p>
         ) : (
           <div className="space-y-6">

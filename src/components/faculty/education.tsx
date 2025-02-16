@@ -28,7 +28,7 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
 
   const handleAddEducation = async () => {
     try {
-      const updatedEducation = [...profile.education, formData]
+      const updatedEducation = [...(profile.education || []), formData]
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {
         education: updatedEducation,
         updatedAt: new Date()
@@ -71,7 +71,7 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
         <Button onClick={() => setIsOpen(true)}>Add</Button>
       </CardHeader>
       <CardContent>
-        {profile.education.length === 0 ? (
+        {(!profile.education || profile.education.length === 0) ? (
           <p className="text-muted-foreground">No education records added yet.</p>
         ) : (
           <div className="space-y-6">

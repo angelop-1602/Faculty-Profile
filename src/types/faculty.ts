@@ -34,18 +34,24 @@ export interface ResearchTitle {
 }
 
 export interface FacultyProfile {
-  createdAt: Date
-  updatedAt: Date
-  lastLogin?: Date
-  name: string
   email: string
-  department: Department
-  status: EmploymentStatus
-  specialization: string
+  name: string
+  department?: Department
+  specialization?: string
+  status?: EmploymentStatus
   photoURL?: string
   bannerURL?: string
-  education: Education[]
-  researchEngagements: ResearchEngagement[]
-  researchPublications: ResearchPublication[]
-  researchTitles: ResearchTitle[]
+  createdAt?: Date
+  updatedAt?: Date
+  lastLogin?: Date
+  education?: Education[]
+  researchEngagements?: ResearchEngagement[]
+  researchPublications?: ResearchPublication[]
+  researchTitles?: ResearchTitle[]
+  researchCount?: {
+    total: number
+    publications: number
+    engagements: number
+    titles: number
+  }
 } 

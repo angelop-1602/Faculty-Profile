@@ -18,9 +18,9 @@ import { Building2, GraduationCap, Mail, UserRound } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
 
-export default function ViewFacultyProfile({ params }: { params: { email: string } }) {
+export default function AdminViewFacultyProfile({ params }: { params: { email: string } }) {
   const router = useRouter()
-  const { role, user } = useAuth()
+  const { role } = useAuth()
   const [profile, setProfile] = useState<FacultyProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -28,11 +28,11 @@ export default function ViewFacultyProfile({ params }: { params: { email: string
   const { toast } = useToast()
 
   useEffect(() => {
-    // Check if user is authorized to view this profile
-    if (!user || (role !== 'admin' && user.email !== decodeURIComponent(params.email))) {
+    // Check if user is admin
+    if (role !== 'admin') {
       toast({
         title: 'Unauthorized',
-        description: 'You do not have permission to view this profile.',
+        description: 'Only administrators can view this page.',
         variant: 'destructive'
       })
       router.push('/')
@@ -94,7 +94,7 @@ export default function ViewFacultyProfile({ params }: { params: { email: string
     }
 
     fetchProfile()
-  }, [params.email, router, toast, role, user])
+  }, [params.email, router, toast, role])
 
   const handleEdit = () => {
     setIsEditing(true)
@@ -311,24 +311,22 @@ export default function ViewFacultyProfile({ params }: { params: { email: string
           </div>
 
           {/* Edit Profile Button - Bottom Right */}
-          {role === 'admin' && (
-            <div className="absolute top-6 right-6 flex gap-2">
-              {isEditing ? (
-                <>
-                  <Button variant="outline" onClick={handleCancel}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave}>
-                    Save Changes
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={handleEdit}>
-                  Edit Profile
+          <div className="absolute top-6 right-6 flex gap-2">
+            {isEditing ? (
+              <>
+                <Button variant="outline" onClick={handleCancel}>
+                  Cancel
                 </Button>
-              )}
-            </div>
-          )}
+                <Button onClick={handleSave}>
+                  Save Changes
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleEdit}>
+                Edit Profile
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Research Sections */}
