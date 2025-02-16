@@ -9,12 +9,13 @@ interface LoadingProps {
   fullScreen?: boolean
   error?: boolean
   errorMessage?: string
+  blur?: boolean
 }
 
 const sizeClasses = {
   sm: 'w-4 h-4',
   md: 'w-6 h-6',
-  lg: 'w-8 h-8'
+  lg: 'w-12 h-12'
 }
 
 export function Loading({
@@ -23,18 +24,18 @@ export function Loading({
   size = 'md',
   fullScreen = false,
   error = false,
-  errorMessage
+  errorMessage,
+  blur = false
 }: LoadingProps) {
   const content = (
     <div className={cn(
-      'flex flex-col items-center justify-center gap-4',
-      fullScreen && 'min-h-screen',
+      "w-full h-full flex flex-col items-center justify-center text-center gap-4",
       className
     )}>
       {error ? (
         <Alert variant="destructive" className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Connection Error</AlertTitle>
+          <AlertCircle className="h-5 w-5 text-red-500" />
+          <AlertTitle className="text-red-600">Connection Error</AlertTitle>
           <AlertDescription>
             {errorMessage || 'Please check your connection and try again.'}
           </AlertDescription>
@@ -42,9 +43,7 @@ export function Loading({
       ) : (
         <>
           <Loader2 className={cn('animate-spin text-spup-green', sizeClasses[size])} />
-          {message && (
-            <p className="text-sm text-muted-foreground">{message}</p>
-          )}
+          {message && <p className="text-sm text-gray-300 animate-pulse">{message}</p>}
         </>
       )}
     </div>
@@ -52,11 +51,17 @@ export function Loading({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm">
-        {content}
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-lg p-8 min-w-[200px] flex items-center justify-center">
+          {content}
+        </div>
       </div>
     )
   }
 
-  return content
-} 
+  return (
+    <div className="w-full h-full min-h-[100px] flex items-center justify-center">
+      {content}
+    </div>
+  )
+}

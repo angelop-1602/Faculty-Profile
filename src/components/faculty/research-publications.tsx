@@ -150,7 +150,7 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
           className="bg-spup-green hover:bg-spup-green-dark"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Publication
+          Add
         </Button>
       </CardHeader>
       <CardContent>
@@ -265,7 +265,7 @@ export function ResearchPublicationsSection({ profile, setProfile }: ResearchPub
               Cancel
             </Button>
             <Button onClick={handleAddResearchPublication} className="bg-spup-green hover:bg-spup-green-dark">
-              {editIndex !== null ? 'Save Changes' : 'Add Publication'}
+              {editIndex !== null ? 'Save Changes' : 'Add'}
             </Button>
           </div>
         </DialogContent>

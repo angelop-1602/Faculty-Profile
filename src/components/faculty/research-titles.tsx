@@ -209,7 +209,7 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
           className="bg-spup-green hover:bg-spup-green-dark"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Research Title
+          Add
         </Button>
       </CardHeader>
       <CardContent>
@@ -368,7 +368,7 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
               className="bg-spup-green hover:bg-spup-green-dark"
               disabled={isUploading}
             >
-              {editIndex !== null ? 'Save Changes' : 'Add Research Title'}
+              {editIndex !== null ? 'Save Changes' : 'Add'}
             </Button>
           </div>
         </DialogContent>

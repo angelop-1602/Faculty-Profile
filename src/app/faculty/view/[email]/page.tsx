@@ -14,9 +14,10 @@ import { EducationSection } from '@/components/faculty/education'
 import { ResearchEngagementsSection } from '@/components/faculty/research-engagements'
 import { ResearchPublicationsSection } from '@/components/faculty/research-publications'
 import { ResearchTitlesSection } from '@/components/faculty/research-titles'
-import { Building2, GraduationCap, Mail, UserRound } from 'lucide-react'
+import { Building2, GraduationCap, Mail, UserRound, Pencil } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function ViewFacultyProfile({ params }: { params: { email: string } }) {
   const router = useRouter()
@@ -25,7 +26,23 @@ export default function ViewFacultyProfile({ params }: { params: { email: string
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [editedProfile, setEditedProfile] = useState<FacultyProfile | null>(null)
+  const [headerHeight, setHeaderHeight] = useState('h-48')
   const { toast } = useToast()
+
+  useEffect(() => {
+    // Header scroll behavior
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY
+      if (scrollPosition > 100) {
+        setHeaderHeight('h-32')
+      } else {
+        setHeaderHeight('h-48')
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     // Check if user is authorized to view this profile
@@ -109,18 +126,20 @@ export default function ViewFacultyProfile({ params }: { params: { email: string
     if (!editedProfile || !profile?.email) return
 
     try {
-      const docRef = doc(db, 'faculty_profiles', profile.email)
+      // Ensure name cannot be edited by faculty
       const updatedProfile = {
         ...editedProfile,
+        name: profile.name, // Always use original name for faculty
         updatedAt: new Date()
       }
       
+      const docRef = doc(db, 'faculty_profiles', profile.email)
       await updateDoc(docRef, updatedProfile)
-      setProfile(editedProfile)
+      setProfile(updatedProfile)
       setIsEditing(false)
       toast({
         title: 'Profile Updated',
-        description: 'Faculty profile has been updated successfully.',
+        description: 'Your profile has been updated successfully.',
         className: 'bg-green-500 text-white'
       })
     } catch (error) {
@@ -163,8 +182,8 @@ export default function ViewFacultyProfile({ params }: { params: { email: string
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
-      {/* Header */}
-      <header className="bg-spup-green text-white shadow">
+      {/* Header with dynamic height */}
+      <header className="bg-spup-green text-white shadow sticky top-0 z-50 transition-all duration-300">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Faculty Profile</h1>
           <Button
@@ -180,186 +199,200 @@ export default function ViewFacultyProfile({ params }: { params: { email: string
       <main className="container mx-auto py-8 space-y-8">
         {/* Profile Card */}
         <div className="bg-white rounded-lg shadow overflow-hidden relative">
-          {/* Banner */}
-          <div className="relative h-48">
-            <img
+          {/* Banner with dynamic height */}
+          <div className={`relative transition-all duration-300 ${headerHeight}`}>
+            <Image
               src={profile.bannerURL || '/images/fur de lis.png'}
               alt="Profile banner"
-              className="w-full h-full object-cover"
+              fill
+              sizes="100vw"
+              priority
+              className="object-cover"
             />
           </div>
 
-          {/* White Section: Photo & Personal Info */}
+          {/* Profile Content */}
           <div className="px-6 pb-6">
-            {/* Use a negative margin to overlap the photo on the banner */}
-            <div className="relative -mt-16 flex flex-col sm:flex-row items-center sm:items-start gap-4 px-6 pb-6">
-              {/* Profile Photo */}
-              <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden mx-auto sm:mx-0">
-                {profile.photoURL ? (
-                  <img
-                    src={profile.photoURL}
-                    alt={profile.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-spup-green to-spup-green-dark flex items-center justify-center">
-                    <UserRound className="h-16 w-16 text-white" />
-                  </div>
+            <div className="relative -mt-12 flex flex-col items-center text-center">
+              {/* Profile Photo with Edit Button */}
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white bg-white shadow-md">
+                  {profile.photoURL ? (
+                    <Image
+                      src={profile.photoURL}
+                      alt={profile.name || 'Profile photo'}
+                      className="w-full h-full object-cover"
+                      width={96}
+                      height={96}
+                      priority
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-spup-green to-spup-green-dark flex items-center justify-center">
+                      <UserRound className="h-12 w-12 text-white" />
+                    </div>
+                  )}
+                </div>
+                {(role === 'admin' || user?.email === profile.email) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={isEditing ? handleSave : handleEdit}
+                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md bg-white/80 backdrop-blur-sm border-white/50 hover:bg-white"
+                  >
+                    <Pencil className="h-4 w-4 text-spup-green" />
+                  </Button>
                 )}
               </div>
 
-              {/* Name, Email, and Other Details */}
-              <div className="flex-1 min-w-[200px] text-center sm:text-left">
-                <h2 className="text-2xl font-bold text-black mt-8">
+              {/* Profile Info */}
+              <div className="mt-3 w-full max-w-3xl">
+                <h2 className="text-2xl font-bold text-gray-900">
                   {profile.name}
                 </h2>
 
-                <p className="text-gray-600 flex items-center justify-center sm:justify-start mt-3">
-                  <Mail className="h-4 w-4 mr-1" />
-                  {profile.email}
-                </p>
-
-                {isEditing ? (
-                  // Editing Fields
-                  <div className="mt-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {/* Department */}
-                    <div className="grid gap-1">
-                      <Label htmlFor="department" className="text-xs">Department</Label>
-                      <Select
-                        value={editedProfile.department || "unset"}
-                        onValueChange={(value: Department) =>
-                          setEditedProfile({
-                            ...editedProfile,
-                            department: value === "unset" ? "" : value
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unset">Select department</SelectItem>
-                          <SelectItem value="SASTE">SASTE</SelectItem>
-                          <SelectItem value="SITE">SITE</SelectItem>
-                          <SelectItem value="SBHAM">SBHAM</SelectItem>
-                          <SelectItem value="SNAHS">SNAHS</SelectItem>
-                          <SelectItem value="SOM">SOM</SelectItem>
-                          <SelectItem value="BEU">BEU</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Specialization */}
-                    <div className="grid gap-1">
-                      <Label htmlFor="specialization" className="text-xs">Specialization</Label>
-                      <Input
-                        id="specialization"
-                        value={editedProfile.specialization}
-                        onChange={(e) =>
-                          setEditedProfile({
-                            ...editedProfile,
-                            specialization: e.target.value
-                          })
-                        }
-                        placeholder="Enter specialization"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-
-                    {/* Employment Status */}
-                    <div className="grid gap-1">
-                      <Label htmlFor="status" className="text-xs">Employment Status</Label>
-                      <Select
-                        value={editedProfile.status || "unset"}
-                        onValueChange={(value: EmploymentStatus) =>
-                          setEditedProfile({
-                            ...editedProfile,
-                            status: value === "unset" ? "" : value
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unset">Select status</SelectItem>
-                          <SelectItem value="Full time">Full time</SelectItem>
-                          <SelectItem value="Part time">Part time</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div className="mt-1 space-y-1">
+                  <div className="flex items-center justify-center text-gray-600">
+                    <Mail className="h-4 w-4 mr-2" />
+                    {profile.email}
                   </div>
-                ) : (
-                  // Non-Editing Fields
-                  <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2 text-sm text-gray-600">
-                    <div className="flex items-center">
-                      <Building2 className="h-3 w-3 mr-1" />
-                      {profile.department || 'No department set'}
+
+                  {isEditing ? (
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                      {/* Department */}
+                      <div>
+                        <Label htmlFor="department">Department</Label>
+                        <Select
+                          value={editedProfile.department || "unset"}
+                          onValueChange={(value: Department) =>
+                            setEditedProfile({
+                              ...editedProfile,
+                              department: value === "unset" ? "" : value
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unset">Select department</SelectItem>
+                            <SelectItem value="SASTE">SASTE</SelectItem>
+                            <SelectItem value="SITE">SITE</SelectItem>
+                            <SelectItem value="SBHAM">SBHAM</SelectItem>
+                            <SelectItem value="SNAHS">SNAHS</SelectItem>
+                            <SelectItem value="SOM">SOM</SelectItem>
+                            <SelectItem value="BEU">BEU</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Specialization */}
+                      <div>
+                        <Label htmlFor="specialization">Specialization</Label>
+                        <Input
+                          id="specialization"
+                          value={editedProfile.specialization}
+                          onChange={(e) =>
+                            setEditedProfile({
+                              ...editedProfile,
+                              specialization: e.target.value
+                            })
+                          }
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      {/* Status */}
+                      <div>
+                        <Label htmlFor="status">Employment Status</Label>
+                        <Select
+                          value={editedProfile.status || "unset"}
+                          onValueChange={(value: EmploymentStatus) =>
+                            setEditedProfile({
+                              ...editedProfile,
+                              status: value === "unset" ? "" : value
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unset">Select status</SelectItem>
+                            <SelectItem value="Full Time">Full Time</SelectItem>
+                            <SelectItem value="Part Time">Part Time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <GraduationCap className="h-3 w-3 mr-1" />
-                      {profile.specialization || 'No specialization set'}
+                  ) : (
+                    <div className="mt-4 flex flex-wrap justify-center gap-4">
+                      {profile.department && (
+                        <div className="flex items-center text-gray-600">
+                          <Building2 className="h-4 w-4 mr-2" />
+                          {profile.department}
+                        </div>
+                      )}
+                      {profile.specialization && (
+                        <div className="flex items-center text-gray-600">
+                          <GraduationCap className="h-4 w-4 mr-2" />
+                          {profile.specialization}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center">
-                      <UserRound className="h-3 w-3 mr-1" />
-                      {profile.status || 'No status set'}
+                  )}
+
+                  {isEditing && (
+                    <div className="mt-4 flex justify-center gap-2">
+                      <Button 
+                        onClick={handleSave} 
+                        className="bg-spup-green hover:bg-spup-green/90 text-white transition-colors"
+                      >
+                        Save Changes
+                      </Button>
+                      <Button 
+                        onClick={handleCancel} 
+                        variant="outline"
+                        className="hover:bg-gray-100"
+                      >
+                        Cancel
+                      </Button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Edit Profile Button - Bottom Right */}
-          {role === 'admin' && (
-            <div className="absolute top-6 right-6 flex gap-2">
-              {isEditing ? (
-                <>
-                  <Button variant="outline" onClick={handleCancel}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave}>
-                    Save Changes
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={handleEdit}>
-                  Edit Profile
-                </Button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Research Sections */}
         <div className="space-y-8">
-          <EducationSection 
-            profile={profile} 
+          <EducationSection
+            profile={profile}
             setProfile={(updatedProfile) => {
               setProfile(updatedProfile)
               setEditedProfile(updatedProfile)
-            }} 
+            }}
           />
-          <ResearchEngagementsSection 
-            profile={profile} 
+          <ResearchPublicationsSection
+            profile={profile}
             setProfile={(updatedProfile) => {
               setProfile(updatedProfile)
               setEditedProfile(updatedProfile)
-            }} 
+            }}
           />
-          <ResearchPublicationsSection 
-            profile={profile} 
+          <ResearchEngagementsSection
+            profile={profile}
             setProfile={(updatedProfile) => {
               setProfile(updatedProfile)
               setEditedProfile(updatedProfile)
-            }} 
+            }}
           />
-          <ResearchTitlesSection 
-            profile={profile} 
+          <ResearchTitlesSection
+            profile={profile}
             setProfile={(updatedProfile) => {
               setProfile(updatedProfile)
               setEditedProfile(updatedProfile)
-            }} 
+            }}
           />
         </div>
       </main>

@@ -32,21 +32,69 @@ const publicPaths = ['/', '/login']
 // Profile image cache functions
 const cacheProfileImage = async (email: string, imageUrl: string) => {
   try {
-    const response = await fetch(imageUrl)
-    const blob = await response.blob()
+    // Try to fetch WebP version first
+    const webpResponse = await fetch(imageUrl, {
+      headers: {
+        'Accept': 'image/webp,*/*'
+      }
+    })
+    
+    if (!webpResponse.ok) {
+      throw new Error('Failed to fetch WebP image')
+    }
+
+    const blob = await webpResponse.blob()
     const reader = new FileReader()
     
-    return new Promise<string>((resolve) => {
+    return new Promise<string>((resolve, reject) => {
       reader.onloadend = () => {
-        const base64data = reader.result as string
-        localStorage.setItem(`profile_image_${email}`, base64data)
-        resolve(base64data)
+        try {
+          const base64data = reader.result as string
+          localStorage.setItem(`profile_image_${email}`, base64data)
+          resolve(base64data)
+        } catch (error) {
+          console.error('Error storing profile image in localStorage:', error)
+          reject(error)
+        }
+      }
+      reader.onerror = (error) => {
+        console.error('Error reading profile image:', error)
+        reject(error)
       }
       reader.readAsDataURL(blob)
     })
   } catch (error) {
     console.error('Error caching profile image:', error)
-    return null
+    // Fallback to original image if WebP fails
+    try {
+      const response = await fetch(imageUrl)
+      if (!response.ok) {
+        throw new Error('Failed to fetch original image')
+      }
+      const blob = await response.blob()
+      const reader = new FileReader()
+      
+      return new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          try {
+            const base64data = reader.result as string
+            localStorage.setItem(`profile_image_${email}`, base64data)
+            resolve(base64data)
+          } catch (error) {
+            console.error('Error storing profile image in localStorage:', error)
+            reject(error)
+          }
+        }
+        reader.onerror = (error) => {
+          console.error('Error reading profile image:', error)
+          reject(error)
+        }
+        reader.readAsDataURL(blob)
+      })
+    } catch (fallbackError) {
+      console.error('Error caching original profile image:', fallbackError)
+      return null
+    }
   }
 }
 

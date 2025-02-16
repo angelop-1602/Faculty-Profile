@@ -33,6 +33,30 @@
     --ring: 222.2 84% 4.9%;
  
     --radius: 0.5rem;
+
+    /* Responsive breakpoints */
+    --screen-sm: 640px;
+    --screen-md: 768px;
+    --screen-lg: 1024px;
+    --screen-xl: 1280px;
+    --screen-2xl: 1536px;
+
+    /* Container max widths */
+    --container-sm: 640px;
+    --container-md: 768px;
+    --container-lg: 1024px;
+    --container-xl: 1280px;
+    --container-2xl: 1536px;
+
+    /* Spacing scale for consistent responsive gaps */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
   }
  
   .dark {
@@ -72,6 +96,46 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Responsive typography */
+  h1 {
+    @apply text-2xl md:text-3xl lg:text-4xl font-bold;
+  }
+  h2 {
+    @apply text-xl md:text-2xl lg:text-3xl font-semibold;
+  }
+  h3 {
+    @apply text-lg md:text-xl lg:text-2xl font-semibold;
+  }
+  p {
+    @apply text-base md:text-lg;
+  }
+}
+
+@layer components {
+  .container {
+    @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+  }
+
+  .responsive-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6;
+  }
+
+  .responsive-flex {
+    @apply flex flex-col md:flex-row items-start md:items-center gap-4;
+  }
+
+  .mobile-menu {
+    @apply fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden;
+  }
+
+  .mobile-menu-content {
+    @apply fixed inset-y-0 right-0 z-50 h-full w-3/4 bg-background shadow-lg;
   }
 }
 
@@ -95,4 +159,24 @@
 
 .to-spup-green-dark {
   --tw-gradient-to: var(--spup-green-dark);
+}
+
+/* Responsive image handling */
+.responsive-image {
+  @apply w-full h-auto object-cover;
+  aspect-ratio: 16/9;
+}
+
+.responsive-image-square {
+  @apply w-full h-auto object-cover;
+  aspect-ratio: 1/1;
+}
+
+/* Responsive container paddings */
+.section-padding {
+  @apply py-8 md:py-12 lg:py-16;
+}
+
+.section-margin {
+  @apply my-8 md:my-12 lg:my-16;
 } 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { FacultyProfile, ResearchEngagement } from '@/types/faculty'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,9 +16,14 @@ import { Edit2, Trash2, Plus, Calendar, UserCircle2, ExternalLink } from 'lucide
 interface ResearchEngagementsSectionProps {
   profile: FacultyProfile
   setProfile: (profile: FacultyProfile) => void
+  onUpdate?: (engagements: ResearchEngagement[]) => void
 }
 
-export function ResearchEngagementsSection({ profile, setProfile }: ResearchEngagementsSectionProps) {
+export function ResearchEngagementsSection({ 
+  profile, 
+  setProfile,
+  onUpdate 
+}: ResearchEngagementsSectionProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [formData, setFormData] = useState<ResearchEngagement>({
@@ -30,6 +35,17 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  const handleUpdate = useCallback(async (updatedEngagements: ResearchEngagement[]) => {
+    if (onUpdate) {
+      onUpdate(updatedEngagements)
+    } else {
+      setProfile({
+        ...profile,
+        researchEngagements: updatedEngagements
+      })
+    }
+  }, [profile, setProfile, onUpdate])
 
   const handleEdit = (index: number) => {
     setEditIndex(index)
@@ -49,34 +65,14 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
 
       const updatedEngagements = [...engagements]
       updatedEngagements.splice(index, 1)
-
-      // Delete the file from storage if it exists
-      if (engagement.certificate) {
-        const fileRef = ref(storage, engagement.certificate)
-        await deleteObject(fileRef)
-      }
-
-      await updateDoc(doc(db, 'faculty_profiles', profile.email), {
-        researchEngagements: updatedEngagements,
-        updatedAt: new Date()
-      })
-
-      setProfile({
-        ...profile,
-        researchEngagements: updatedEngagements,
-        updatedAt: new Date()
-      })
-
-      toast({
-        title: 'Research Engagement Deleted',
-        description: 'The research engagement has been deleted successfully.',
-        className: 'bg-green-500 text-white'
-      })
-    } catch (error: any) {
+      
+      await handleUpdate(updatedEngagements)
+    } catch (error) {
+      console.error('Error deleting research engagement:', error)
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete research engagement.',
-        className: 'bg-red-500 text-white'
+        description: 'Failed to delete research engagement.',
+        variant: 'destructive',
       })
     }
   }
@@ -137,27 +133,12 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
       const updatedEngagements = [...currentEngagements]
       
       if (editIndex !== null) {
-        // If editing and there's an existing certificate URL that's different, delete the old file
-        const oldEngagement = currentEngagements[editIndex]
-        if (oldEngagement?.certificate && oldEngagement.certificate !== certificateUrl) {
-          const oldFileRef = ref(storage, oldEngagement.certificate)
-          await deleteObject(oldFileRef)
-        }
         updatedEngagements[editIndex] = newEngagement
       } else {
         updatedEngagements.push(newEngagement)
       }
 
-      await updateDoc(doc(db, 'faculty_profiles', profile.email), {
-        researchEngagements: updatedEngagements,
-        updatedAt: new Date()
-      })
-
-      setProfile({
-        ...profile,
-        researchEngagements: updatedEngagements,
-        updatedAt: new Date()
-      })
+      await handleUpdate(updatedEngagements)
 
       setIsOpen(false)
       setEditIndex(null)
@@ -202,7 +183,7 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
           className="bg-spup-green hover:bg-spup-green-dark"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Research Engagement
+          Add
         </Button>
       </CardHeader>
       <CardContent>
@@ -321,7 +302,7 @@ export function ResearchEngagementsSection({ profile, setProfile }: ResearchEnga
               className="bg-spup-green hover:bg-spup-green-dark"
               disabled={isUploading}
             >
-              {editIndex !== null ? 'Save Changes' : 'Add Engagement'}
+              {editIndex !== null ? 'Save Changes' : 'Add'}
             </Button>
           </div>
         </DialogContent>

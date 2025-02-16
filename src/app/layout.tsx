@@ -43,17 +43,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
         <link rel="icon" href="/images/favicon.ico" sizes="any" />
         <link rel="icon" href="/images/icon-32.png" type="image/png" sizes="32x32" />
         <link rel="icon" href="/images/icon-16.png" type="image/png" sizes="16x16" />
         <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" sizes="180x180" />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-full`}>
         <AuthProvider>
           <Suspense fallback={<Loading fullScreen message="Loading application..." />}>
-            {children}
+            <div className="flex min-h-full flex-col">
+              {children}
+            </div>
           </Suspense>
           <Toaster />
         </AuthProvider>

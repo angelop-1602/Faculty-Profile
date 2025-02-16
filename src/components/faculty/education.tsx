@@ -132,7 +132,7 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
           setIsOpen(true)
         }} className="bg-spup-green hover:bg-spup-green-dark">
           <Plus className="h-4 w-4 mr-2" />
-          Add Education
+          Add
         </Button>
       </CardHeader>
       <CardContent>
@@ -240,7 +240,7 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
               Cancel
             </Button>
             <Button onClick={handleSave} className="bg-spup-green hover:bg-spup-green-dark">
-              {editIndex !== null ? 'Save Changes' : 'Add Education'}
+              {editIndex !== null ? 'Save Changes' : 'Add'}
             </Button>
           </div>
         </DialogContent>
