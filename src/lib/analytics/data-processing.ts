@@ -7,12 +7,10 @@ export const cleanAndNormalizeData = (profiles: FacultyProfile[]) => {
     department: normalizeDepartment(profile.department),
     status: normalizeStatus(profile.status),
     researchCount: {
+      titles: profile.researchTitles?.filter(title => title.status === 'completed')?.length || 0,
       publications: profile.researchPublications?.length || 0,
       engagements: profile.researchEngagements?.length || 0,
-      titles: profile.researchTitles?.length || 0,
-      total: (profile.researchPublications?.length || 0) +
-             (profile.researchEngagements?.length || 0) +
-             (profile.researchTitles?.length || 0)
+      total: profile.researchTitles?.filter(title => title.status === 'completed')?.length || 0
     },
     activityScore: calculateActivityScore(profile),
     topics: extractResearchTopics(profile)
@@ -20,14 +18,14 @@ export const cleanAndNormalizeData = (profiles: FacultyProfile[]) => {
 }
 
 // Department normalization
-const normalizeDepartment = (dept: Department): Department => {
-  if (!dept) return ''
+const normalizeDepartment = (dept: Department | undefined): Department => {
+  if (!dept) return '' as Department
   return dept.trim().toUpperCase() as Department
 }
 
 // Status normalization
-const normalizeStatus = (status: EmploymentStatus): EmploymentStatus => {
-  if (!status) return ''
+const normalizeStatus = (status: EmploymentStatus | undefined): EmploymentStatus => {
+  if (!status) return '' as EmploymentStatus
   return status.trim() as EmploymentStatus
 }
 
@@ -94,16 +92,22 @@ export const getDepartmentSummary = (profiles: FacultyProfile[]) => {
     }
 
     acc[dept].totalFaculty++
+    
+    const completedResearch = profile.researchTitles?.filter(
+      title => title.status === 'completed'
+    ).length || 0
+    acc[dept].titles += completedResearch
+
     acc[dept].publications += profile.researchPublications?.length || 0
     acc[dept].engagements += profile.researchEngagements?.length || 0
-    acc[dept].titles += profile.researchTitles?.length || 0
     
-    // Count active researchers (those with any research output)
-    if (profile.researchTitles?.length || profile.researchPublications?.length) {
+    const hasOngoingResearch = profile.researchTitles?.some(
+      title => title.status === 'on-going'
+    ) || false
+    if (hasOngoingResearch) {
       acc[dept].activeResearchers++
     }
 
-    // Count ongoing research
     const ongoingResearch = profile.researchTitles?.filter(
       title => title.status === 'on-going'
     ).length || 0
@@ -268,15 +272,16 @@ export const getResearchGaps = (profiles: FacultyProfile[]) => {
   
   // Collect topics by department
   profiles.forEach(profile => {
-    if (!profile.department) return
+    const department = profile.department
+    if (!department) return
     
-    if (!departmentTopics.has(profile.department)) {
-      departmentTopics.set(profile.department, new Map())
+    if (!departmentTopics.has(department)) {
+      departmentTopics.set(department, new Map())
     }
     
     const topics = extractResearchTopics(profile)
     topics.forEach(({ topic, count }) => {
-      const deptTopics = departmentTopics.get(profile.department)!
+      const deptTopics = departmentTopics.get(department)!
       deptTopics.set(topic, (deptTopics.get(topic) || 0) + count)
     })
   })
@@ -300,9 +305,11 @@ export const getResearchGaps = (profiles: FacultyProfile[]) => {
 
 // Helper function to identify gap areas based on department
 const identifyGapAreas = (
-  department: Department, 
+  department: Department | undefined, 
   currentTopics: { topic: string; count: number }[]
 ) => {
+  if (!department) return []
+  
   // Define expected research areas per department
   const expectedAreas: Partial<Record<Department, string[]>> = {
     'SASTE': ['education', 'teaching', 'curriculum', 'pedagogy', 'assessment'],

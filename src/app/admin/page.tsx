@@ -237,13 +237,10 @@ export default function AdminPage() {
   // Calculate statistics based on filtered profiles
   const totalFaculty = filteredProfiles.length
   const totalResearchOutput = filteredProfiles.reduce((acc, profile) => 
-    acc + (profile.researchPublications?.length || 0) +
-         (profile.researchEngagements?.length || 0) +
-         (profile.researchTitles?.length || 0)
+    acc + (profile.researchTitles?.filter(title => title.status === 'completed').length || 0)
   , 0)
   const activeResearchers = filteredProfiles.filter(p => 
-    (p.researchPublications?.length || 0) +
-    (p.researchTitles?.length || 0) > 0
+    p.researchTitles?.some(title => title.status === 'on-going') || false
   ).length
   const researchGrowth = Math.round(processedData?.predictions
     .filter((p: any) => 
@@ -533,7 +530,7 @@ export default function AdminPage() {
                 {totalResearchOutput}
               </div>
               <p className="text-sm text-gray-600 mt-2">
-                Combined research activities
+                Completed research titles
               </p>
             </CardContent>
           </Card>
@@ -547,7 +544,7 @@ export default function AdminPage() {
                 {activeResearchers}
               </div>
               <p className="text-sm text-gray-600 mt-2">
-                Faculty with research activity
+                Faculty with ongoing research
               </p>
             </CardContent>
           </Card>

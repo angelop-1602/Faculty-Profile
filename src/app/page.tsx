@@ -44,12 +44,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-[#036635] to-[#024423] text-white py-16 md:py-24">
-      <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center lg:items-start 
+      <div className="bg-gradient-to-br from-[#29853a] to-[#024423] text-white py-16 md:py-24">
+        <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center lg:items-start 
      justify-center lg:justify-center gap-8 lg:gap-4">
           {/* Logo Container with Shadow */}
           <div className="relative w-40 h-40 md:w-64 md:h-64 lg:order-first">
-            <div className="absolute inset-0 bg-[#FECC07] blur-[20px] opacity-50 rounded-full -z-10 " />
+            <div className="absolute inset-0 bg-[#E5B606] blur-[20px] opacity-50 rounded-full -z-10 " />
             <Image
               src="/images/spup-logo.png"
               alt="SPUP Logo"
@@ -65,18 +65,17 @@ export default function LoginPage() {
               Welcome to the Faculty Research Portfolio
             </h1>
             <p className="text-base md:text-lg opacity-90 mb-6 lg:mb-8">
-              The Center for Planning, Research, Innovations, and New Technology (CPRINT) is 
-              requiring all faculty members to maintain a research portfolio. This initiative 
-              will help us track faculty research engagement and analyze trends to support 
+              The <b>Center for Planning, Research, Innovations, and New Technology (CPRINT)</b> is
+              requiring all faculty members to maintain a research portfolio. This initiative
+              will help us track faculty research engagement and analyze trends to support
               future research development.
             </p>
-            
+
             {/* Login Button */}
             <div className="flex justify-center lg:justify-start">
               <Button
                 onClick={handleMicrosoftLogin}
-                className="bg-[#FECC07] hover:bg-[#E5B606] text-[#036635] font-semibold px-8 py-6 
-                         text-sm md:text-base transition-transform hover:scale-105"
+                className="bg-white/20 hover:bg-white/20 backdrop-blur-md border border-white/30 text-white font-semibold px-8 py-6 text-sm md:text-base transition-transform hover:scale-105"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -101,23 +100,11 @@ export default function LoginPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <svg className="h-5 w-5" viewBox="0 0 48 48">
-                      <path
-                        fill="#036635"
-                        d="M6 6h16v16H6z"
-                      />
-                      <path
-                        fill="#036635"
-                        d="M26 6h16v16H26z"
-                      />
-                      <path
-                        fill="#036635"
-                        d="M6 26h16v16H6z"
-                      />
-                      <path
-                        fill="#036635"
-                        d="M26 26h16v16H26z"
-                      />
+                    <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 48 48">
+                      <path fill="#ff5722" d="M6 6H22V22H6z" transform="rotate(-180 14 14)"></path>
+                      <path fill="#4caf50" d="M26 6H42V22H26z" transform="rotate(-180 34 14)"></path>
+                      <path fill="#ffc107" d="M26 26H42V42H26z" transform="rotate(-180 34 34)"></path>
+                      <path fill="#03a9f4" d="M6 26H22V42H6z" transform="rotate(-180 14 34)"></path>
                     </svg>
                     Sign in with Microsoft
                   </div>
@@ -193,24 +180,32 @@ export default function LoginPage() {
       </div>
 
       {/* Footer */}
-      <div className="bg-[#036635] text-white py-12">
+      <div className="relative bg-[#036635] text-white py-12">
         <div className="container mx-auto px-4 text-center">
           <p className="text-lg mb-4 md:mb-6">
-            Your research contributes to the growth of our institution.<br />
+            Your research contributes to the growth of our institution.
+            <br />
             Let us work together to strengthen our research culture!
           </p>
           <div className="flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-4 text-sm">
             <div className="flex items-center space-x-2">
               <Mail className="w-4 h-4" />
-              <span>For inquiries, contact CPRINT at cprint@spup.edu.ph or visit out office</span>
+              <span>For inquiries, contact CPRINT at cprint@spup.edu.ph or visit our office</span>
             </div>
           </div>
           <div className="mt-8 md:mt-12">
             <p className="font-semibold mb-2">St. Paul University Philippines</p>
-            <p className="text-sm opacity-80">Center for Planning, Research, Innovations, and New Technology</p>
+            <p className="text-sm opacity-80">
+              Center for Planning, Research, Innovations, and New Technology
+            </p>
           </div>
         </div>
+        <span className="absolute bottom-4 left-0 right-0 text-center text-[#14633d]">
+          ©Angelo P. Peralta
+        </span>
       </div>
+
+
     </div>
   )
 }

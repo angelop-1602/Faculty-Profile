@@ -1,20 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { FacultyProfile, ResearchTitle, ResearchType, ResearchStatus } from '@/types/faculty'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { doc, updateDoc } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '@/lib/firebase/config'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { useToast } from '@/components/ui/use-toast'
-import { FileUp, X } from 'lucide-react'
-import { handleUploadError } from '@/lib/firebase/config'
+import { Edit2, Trash2, Plus, Calendar, FileText, Tag, Activity, ExternalLink, Upload } from 'lucide-react'
 
 interface ResearchTitlesSectionProps {
   profile: FacultyProfile
@@ -32,166 +30,140 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
     status: 'on-going',
     paper: '',
   })
-  const [file, setFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: 'File too large',
-          description: 'Please select a file smaller than 10MB.',
-          variant: 'destructive'
-        })
-        return
-      }
-      setFile(file)
-    }
-  }
-
-  const handleRemoveFile = () => {
-    setFile(null)
-    // Reset the file input
-    const fileInput = document.getElementById('paper') as HTMLInputElement
-    if (fileInput) fileInput.value = ''
-  }
 
   const handleEdit = (index: number) => {
     setEditIndex(index)
-    setFormData(profile.researchTitles?.[index] || {
-      title: '',
-      year: '',
-      type: 'self-funded',
-      fundingAgency: '',
-      status: 'on-going',
-      paper: '',
-    })
+    const titles = profile.researchTitles || []
+    const title = titles[index]
+    if (title) {
+      setFormData(title)
+    }
     setIsOpen(true)
   }
 
   const handleDelete = async (index: number) => {
     try {
-      const updatedTitles = [...(profile.researchTitles || [])]
+      const titles = profile.researchTitles || []
+      const title = titles[index]
+      if (!title) return
+
+      const updatedTitles = [...titles]
       updatedTitles.splice(index, 1)
 
-      // Update the research count
-      const updatedResearchCount = {
-        total: (profile.researchCount?.publications || 0) + 
-               (profile.researchCount?.engagements || 0) + 
-               updatedTitles.length,
-        publications: profile.researchCount?.publications || 0,
-        engagements: profile.researchCount?.engagements || 0,
-        titles: updatedTitles.length
+      // Delete the file from storage if it exists
+      if (title.paper) {
+        const fileRef = ref(storage, title.paper)
+        await deleteObject(fileRef)
       }
 
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {
         researchTitles: updatedTitles,
-        researchCount: updatedResearchCount,
         updatedAt: new Date()
       })
 
       setProfile({
         ...profile,
         researchTitles: updatedTitles,
-        researchCount: updatedResearchCount,
         updatedAt: new Date()
       })
 
       toast({
         title: 'Research Title Deleted',
-        description: 'Your research title has been deleted successfully.',
+        description: 'The research title has been deleted successfully.',
         className: 'bg-green-500 text-white'
       })
-    } catch (error) {
-      console.error('Error deleting research title:', error)
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to delete research title. Please try again.',
+        description: error.message || 'Failed to delete research title.',
         className: 'bg-red-500 text-white'
       })
     }
   }
 
+  const handleFileUpload = async (file: File): Promise<string | undefined> => {
+    if (!file) return undefined
+
+    try {
+      setIsUploading(true)
+      const fileRef = ref(storage, `research-titles/${profile.email}/${Date.now()}_${file.name}`)
+      await uploadBytes(fileRef, file)
+      const downloadURL = await getDownloadURL(fileRef)
+      return downloadURL
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      throw error
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   const handleAddResearchTitle = async () => {
     try {
-      let paperUrl = formData.paper
-      if (file && formData.status === 'completed') {
+      if (!formData.title || !formData.year || !formData.type || !formData.status) {
+        toast({
+          title: 'Missing Fields',
+          description: 'Please fill in all required fields.',
+          className: 'bg-red-500 text-white'
+        })
+        return
+      }
+
+      let paperUrl: string | undefined = formData.paper
+      const fileInput = fileInputRef.current
+
+      if (fileInput?.files?.length) {
         try {
-          // Create a unique filename to prevent overwriting
-          const timestamp = Date.now()
-          const uniqueFileName = `${timestamp}_${file.name}`
-          const storageRef = ref(storage, `faculty_profiles/${profile.email}/research_titles/${uniqueFileName}`)
-          
-          // Show upload progress
-          toast({
-            title: 'Uploading File',
-            description: 'Please wait while we upload your file...',
-          })
-          
-          const snapshot = await uploadBytes(storageRef, file)
-          paperUrl = await getDownloadURL(snapshot.ref)
-          
-          toast({
-            title: 'File Uploaded',
-            description: 'Your file has been uploaded successfully.',
-            className: 'bg-green-500 text-white'
-          })
+          const uploadedUrl = await handleFileUpload(fileInput.files[0])
+          if (uploadedUrl) {
+            paperUrl = uploadedUrl
+          }
         } catch (error) {
-          const errorMessage = handleUploadError(error)
           toast({
-            title: 'Upload Error',
-            description: errorMessage,
-            variant: 'destructive'
+            title: 'Error',
+            description: 'Failed to upload file. Please try again.',
+            className: 'bg-red-500 text-white'
           })
           return
         }
       }
 
-      const newTitle = {
+      const newTitle: ResearchTitle = {
         ...formData,
         paper: paperUrl
       }
 
-      const updatedTitles = [...(profile.researchTitles || [])]
+      const currentTitles = profile.researchTitles || []
+      const updatedTitles = [...currentTitles]
+      
       if (editIndex !== null) {
+        // If editing and there's an existing paper URL that's different, delete the old file
+        const oldTitle = currentTitles[editIndex]
+        if (oldTitle?.paper && oldTitle.paper !== paperUrl) {
+          const oldFileRef = ref(storage, oldTitle.paper)
+          await deleteObject(oldFileRef)
+        }
         updatedTitles[editIndex] = newTitle
       } else {
         updatedTitles.push(newTitle)
       }
 
-      // Update the research count
-      const updatedResearchCount = {
-        total: (profile.researchCount?.publications || 0) + 
-               (profile.researchCount?.engagements || 0) + 
-               updatedTitles.length,
-        publications: profile.researchCount?.publications || 0,
-        engagements: profile.researchCount?.engagements || 0,
-        titles: updatedTitles.length
-      }
-
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {
         researchTitles: updatedTitles,
-        researchCount: updatedResearchCount,
         updatedAt: new Date()
       })
 
       setProfile({
         ...profile,
         researchTitles: updatedTitles,
-        researchCount: updatedResearchCount,
         updatedAt: new Date()
       })
 
-      toast({
-        title: editIndex !== null ? 'Research Title Updated' : 'Research Title Added',
-        description: editIndex !== null 
-          ? 'Your research title has been updated successfully.'
-          : 'Your research title has been added successfully.',
-        className: 'bg-green-500 text-white'
-      })
       setIsOpen(false)
+      setEditIndex(null)
       setFormData({
         title: '',
         year: '',
@@ -200,109 +172,106 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
         status: 'on-going',
         paper: '',
       })
-      setFile(null)
-      setEditIndex(null)
-    } catch (error) {
-      console.error('Error saving research title:', error)
+
+      toast({
+        title: editIndex !== null ? 'Research Title Updated' : 'Research Title Added',
+        description: editIndex !== null 
+          ? 'The research title has been updated successfully.'
+          : 'The research title has been added successfully.',
+        className: 'bg-green-500 text-white'
+      })
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to save research title. Please try again.',
-        variant: 'destructive'
+        description: error.message || 'Failed to save research title.',
+        className: 'bg-red-500 text-white'
       })
     }
   }
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Research Titles</CardTitle>
-          <CardDescription>Your research projects and their status</CardDescription>
-        </div>
-        <Button onClick={() => {
-          setFormData({
-            title: '',
-            year: '',
-            type: 'self-funded',
-            fundingAgency: '',
-            status: 'on-going',
-            paper: '',
-          })
-          setFile(null)
-          setEditIndex(null)
-          setIsOpen(true)
-        }}>Add</Button>
+        <CardTitle className="text-2xl font-bold">Research Titles</CardTitle>
+        <Button 
+          onClick={() => {
+            setFormData({
+              title: '',
+              year: '',
+              type: 'self-funded',
+              fundingAgency: '',
+              status: 'on-going',
+              paper: '',
+            })
+            setEditIndex(null)
+            setIsOpen(true)
+          }}
+          className="bg-spup-green hover:bg-spup-green-dark"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add
+        </Button>
       </CardHeader>
       <CardContent>
         {(!profile.researchTitles || profile.researchTitles.length === 0) ? (
           <p className="text-muted-foreground">No research titles added yet.</p>
         ) : (
-          <div className="space-y-6">
+          <div className="grid gap-4">
             {profile.researchTitles.map((title, index) => (
-              <div key={index} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">{title.title}</h3>
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant={title.type === 'funded' ? 'default' : 'secondary'}>
-                        {title.type}
-                      </Badge>
-                      <Badge variant={title.status === 'completed' ? 'default' : 'outline'}>
-                        {title.status}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      <div className="flex justify-between">
-                        <span>Year: {title.year}</span>
-                        {title.fundingAgency && (
-                          <span>Funding Agency: {title.fundingAgency}</span>
-                        )}
-                      </div>
-                      {title.paper && (
-                        <div className="mt-2">
-                          <a
-                            href={title.paper}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline flex items-center gap-2"
-                          >
-                            <FileUp className="h-4 w-4" />
-                            View Paper
-                          </a>
-                        </div>
-                      )}
-                    </div>
+              <div key={index} className="bg-white border rounded-lg p-4 relative group hover:shadow-md transition-shadow">
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(index)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit2 className="h-4 w-4 text-gray-500 hover:text-spup-green" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(index)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
+                  </Button>
+                </div>
+                <h3 className="font-semibold text-lg text-spup-green pr-20">{title.title}</h3>
+                <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Tag className="h-4 w-4 text-gray-400" />
+                    {title.type === 'funded' ? `Funded by ${title.fundingAgency}` : 'Self-funded'}
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(index)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500 hover:text-red-700"
-                      onClick={() => handleDelete(index)}
-                    >
-                      Delete
-                    </Button>
+                  <div className="flex items-center gap-1">
+                    <Activity className="h-4 w-4 text-gray-400" />
+                    {title.status}
                   </div>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    {title.year}
+                  </div>
+                  {title.paper && (
+                    <a
+                      href={title.paper}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-spup-green hover:text-spup-green-dark"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View Paper
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </CardContent>
-
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {editIndex !== null ? 'Edit Research Title' : 'Add Research Title'}
-            </DialogTitle>
+            <DialogTitle>{editIndex !== null ? 'Edit Research Title' : 'Add Research Title'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -320,7 +289,7 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
                 id="year"
                 value={formData.year}
                 onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                placeholder="e.g., 2023"
+                placeholder="Enter year"
               />
             </div>
             <div className="grid gap-2">
@@ -367,46 +336,15 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
             {formData.status === 'completed' && (
               <div className="grid gap-2">
                 <Label htmlFor="paper">Research Paper</Label>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="paper"
-                      type="file"
-                      onChange={handleFileChange}
-                      accept=".pdf,.doc,.docx"
-                      className="flex-1"
-                    />
-                    {file && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleRemoveFile}
-                        className="h-10 w-10"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  {file && (
-                    <p className="text-sm text-muted-foreground">
-                      Selected file: {file.name} ({(file.size / 1024 / 1024).toFixed(2)}MB)
-                    </p>
-                  )}
-                  {formData.paper && !file && (
-                    <div className="text-sm text-muted-foreground">
-                      Current paper: 
-                      <a
-                        href={formData.paper}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline ml-1"
-                      >
-                        View
-                      </a>
-                    </div>
-                  )}
-                </div>
+                <Input
+                  id="paper"
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".pdf,.doc,.docx"
+                  className="cursor-pointer"
+                  disabled={isUploading}
+                />
+                {isUploading && <p className="text-sm text-muted-foreground">Uploading file...</p>}
               </div>
             )}
           </div>
@@ -422,12 +360,15 @@ export function ResearchTitlesSection({ profile, setProfile }: ResearchTitlesSec
                 status: 'on-going',
                 paper: '',
               })
-              setFile(null)
             }}>
               Cancel
             </Button>
-            <Button onClick={handleAddResearchTitle}>
-              {editIndex !== null ? 'Save Changes' : 'Add Research Title'}
+            <Button 
+              onClick={handleAddResearchTitle} 
+              className="bg-spup-green hover:bg-spup-green-dark"
+              disabled={isUploading}
+            >
+              {editIndex !== null ? 'Save Changes' : 'Add'}
             </Button>
           </div>
         </DialogContent>

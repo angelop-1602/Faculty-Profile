@@ -17,6 +17,32 @@ microsoftProvider.addScope('user.read')
 
 const ADMIN_EMAILS = ['cprint@spup.edu.ph'] // Add admin emails here
 
+// Cache profile image in localStorage
+const cacheProfileImage = async (email: string, imageBlob: Blob): Promise<string> => {
+  try {
+    const reader = new FileReader()
+    return new Promise((resolve, reject) => {
+      reader.onloadend = () => {
+        const base64data = reader.result as string
+        localStorage.setItem(`profile_image_${email}`, base64data)
+        const objectUrl = URL.createObjectURL(imageBlob)
+        resolve(objectUrl)
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(imageBlob)
+    })
+  } catch (error) {
+    console.error('Error caching profile image:', error)
+    throw error
+  }
+}
+
+// Get cached profile image
+const getCachedProfileImage = (email: string): string | null => {
+  const cachedImage = localStorage.getItem(`profile_image_${email}`)
+  return cachedImage
+}
+
 export const signInWithMicrosoft = async (): Promise<{ user: User; role: UserRole }> => {
   try {
     const result = await signInWithPopup(auth, microsoftProvider)
@@ -28,9 +54,11 @@ export const signInWithMicrosoft = async (): Promise<{ user: User; role: UserRol
       throw new Error('No email found in user account')
     }
 
-    // Fetch Microsoft profile photo if access token is available
-    let photoURL = user.photoURL
-    if (accessToken) {
+    // Try to get cached image first
+    let photoURL = getCachedProfileImage(user.email)
+
+    // If no cached image, fetch from Microsoft Graph
+    if (!photoURL && accessToken) {
       try {
         const response = await fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {
           headers: {
@@ -40,10 +68,12 @@ export const signInWithMicrosoft = async (): Promise<{ user: User; role: UserRol
         
         if (response.ok) {
           const blob = await response.blob()
-          photoURL = URL.createObjectURL(blob)
+          photoURL = await cacheProfileImage(user.email, blob)
         }
       } catch (error) {
         console.error('Error fetching Microsoft profile photo:', error)
+        // Use cached image as fallback if available
+        photoURL = getCachedProfileImage(user.email) || user.photoURL
       }
     }
 

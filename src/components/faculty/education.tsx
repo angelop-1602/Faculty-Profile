@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { FacultyProfile, Education } from '@/types/faculty'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import { useToast } from '@/components/ui/use-toast'
+import { Edit2, Trash2, Plus, GraduationCap, Building2, Calendar, BookOpen } from 'lucide-react'
 
 interface EducationSectionProps {
   profile: FacultyProfile
@@ -18,6 +19,7 @@ interface EducationSectionProps {
 
 export function EducationSection({ profile, setProfile }: EducationSectionProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [editIndex, setEditIndex] = useState<number | null>(null)
   const [formData, setFormData] = useState<Education>({
     degree: '',
     institution: '',
@@ -26,9 +28,25 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
   })
   const { toast } = useToast()
 
-  const handleAddEducation = async () => {
+  const handleEdit = (index: number) => {
+    setEditIndex(index)
+    const educationList = profile.education || []
+    const education = educationList[index]
+    if (education) {
+      setFormData(education)
+    }
+    setIsOpen(true)
+  }
+
+  const handleDelete = async (index: number) => {
     try {
-      const updatedEducation = [...(profile.education || []), formData]
+      const educationList = profile.education || []
+      const education = educationList[index]
+      if (!education) return
+
+      const updatedEducation = [...educationList]
+      updatedEducation.splice(index, 1)
+
       await updateDoc(doc(db, 'faculty_profiles', profile.email), {
         education: updatedEducation,
         updatedAt: new Date()
@@ -41,8 +59,45 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
       })
 
       toast({
-        title: 'Education Added',
-        description: 'Your education record has been added successfully.'
+        title: 'Education Entry Deleted',
+        description: 'The education entry has been deleted successfully.',
+        className: 'bg-green-500 text-white'
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete education entry.',
+        className: 'bg-red-500 text-white'
+      })
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      const updatedEducation = [...(profile.education || [])]
+      if (editIndex !== null) {
+        updatedEducation[editIndex] = formData
+      } else {
+        updatedEducation.push(formData)
+      }
+
+      await updateDoc(doc(db, 'faculty_profiles', profile.email), {
+        education: updatedEducation,
+        updatedAt: new Date()
+      })
+
+      setProfile({
+        ...profile,
+        education: updatedEducation,
+        updatedAt: new Date()
+      })
+
+      toast({
+        title: editIndex !== null ? 'Education Updated' : 'Education Added',
+        description: editIndex !== null 
+          ? 'Education record has been updated successfully.'
+          : 'Education record has been added successfully.',
+        className: 'bg-green-500 text-white'
       })
       setIsOpen(false)
       setFormData({
@@ -51,37 +106,74 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
         year: '',
         field: '',
       })
+      setEditIndex(null)
     } catch (error) {
-      console.error('Error adding education:', error)
+      console.error('Error saving education:', error)
       toast({
         title: 'Error',
-        description: 'Failed to add education record. Please try again.',
-        variant: 'destructive'
+        description: 'Failed to save education record. Please try again.',
+        className: 'bg-red-500 text-white'
       })
     }
   }
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Education</CardTitle>
-          <CardDescription>Your academic background and qualifications</CardDescription>
-        </div>
-        <Button onClick={() => setIsOpen(true)}>Add</Button>
+        <CardTitle className="text-2xl font-bold">Education</CardTitle>
+        <Button onClick={() => {
+          setFormData({
+            degree: '',
+            institution: '',
+            year: '',
+            field: '',
+          })
+          setEditIndex(null)
+          setIsOpen(true)
+        }} className="bg-spup-green hover:bg-spup-green-dark">
+          <Plus className="h-4 w-4 mr-2" />
+          Add
+        </Button>
       </CardHeader>
       <CardContent>
         {(!profile.education || profile.education.length === 0) ? (
           <p className="text-muted-foreground">No education records added yet.</p>
         ) : (
-          <div className="space-y-6">
+          <div className="grid gap-4">
             {profile.education.map((edu, index) => (
-              <div key={index} className="border rounded-lg p-4">
-                <h3 className="font-semibold text-lg">{edu.degree}</h3>
-                <p className="text-muted-foreground">{edu.field}</p>
-                <div className="flex justify-between mt-2 text-sm">
-                  <span>{edu.institution}</span>
-                  <span>{edu.year}</span>
+              <div key={index} className="bg-white border rounded-lg p-4 relative group hover:shadow-md transition-shadow">
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(index)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit2 className="h-4 w-4 text-gray-500 hover:text-spup-green" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(index)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
+                  </Button>
+                </div>
+                <h3 className="font-semibold text-lg text-spup-green pr-20">{edu.degree}</h3>
+                <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <BookOpen className="h-4 w-4 text-gray-400" />
+                    {edu.field}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Building2 className="h-4 w-4 text-gray-400" />
+                    {edu.institution}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    {edu.year}
+                  </div>
                 </div>
               </div>
             ))}
@@ -92,7 +184,9 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Education</DialogTitle>
+            <DialogTitle>
+              {editIndex !== null ? 'Edit Education' : 'Add Education'}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -133,11 +227,20 @@ export function EducationSection({ profile, setProfile }: EducationSectionProps)
             </div>
           </div>
           <div className="flex justify-end gap-4">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setIsOpen(false)
+              setEditIndex(null)
+              setFormData({
+                degree: '',
+                institution: '',
+                year: '',
+                field: '',
+              })
+            }}>
               Cancel
             </Button>
-            <Button onClick={handleAddEducation}>
-              Add Education
+            <Button onClick={handleSave} className="bg-spup-green hover:bg-spup-green-dark">
+              {editIndex !== null ? 'Save Changes' : 'Add'}
             </Button>
           </div>
         </DialogContent>

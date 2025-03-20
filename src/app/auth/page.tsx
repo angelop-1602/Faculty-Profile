@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/auth-provider'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
+import { toast } from '@/components/ui/use-toast'
 
 export default function AuthPage() {
   const [loading, setLoading] = useState(false)
@@ -19,7 +20,7 @@ export default function AuthPage() {
     setError(null)
     try {
       setLoading(true)
-      const user = await signInWithMicrosoft()
+      const { user, role } = await signInWithMicrosoft()
       
       try {
         // Immediately check role and redirect
@@ -29,22 +30,23 @@ export default function AuthPage() {
         if (adminDoc.exists()) {
           router.push('/admin')
         } else {
-          const facultyRef = doc(db, 'faculty_profiles', user.email!)
-          const facultyDoc = await getDoc(facultyRef)
-
-          if (facultyDoc.exists()) {
-            router.push('/faculty')
-          } else {
-            router.push('/faculty/setup')
-          }
+          router.push('/faculty')
         }
       } catch (error) {
-        console.warn('Error checking role:', error)
-        // Still proceed with auth, let the AuthProvider handle redirection
+        console.error('Error checking role:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to check user role. Please try again.',
+          variant: 'destructive',
+        })
       }
     } catch (error: any) {
       console.error('Login error:', error)
-      setError(error.message || 'An error occurred during sign in. Please try again.')
+      toast({
+        title: 'Error signing in',
+        description: error.message || 'An error occurred during sign in. Please try again.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

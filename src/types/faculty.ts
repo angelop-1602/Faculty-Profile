@@ -14,7 +14,7 @@ export interface ResearchEngagement {
   title: string
   role: string
   year: string
-  certificate: string
+  certificate?: string
 }
 
 export interface ResearchPublication {

@@ -35,3 +35,13 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/ 
+
+#firebase
+.firebase/
+.firebaserc
+database.rule.json
+firebase.json
+storage.rules
+
+#curson
+.cursorrules
